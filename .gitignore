@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# download do Google Cloud (o ID já está em google-config.json)
+client_*.plist

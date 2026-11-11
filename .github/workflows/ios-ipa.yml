@@ -1,0 +1,61 @@
+name: iOS IPA (sem assinatura)
+
+# Compila o app para iPhone SEM assinatura, num Mac da nuvem.
+# O .ipa gerado é assinado e instalado depois, no Windows, com o Sideloadly
+# (conta Apple gratuita). Disparo manual: aba Actions > Run workflow.
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Gerar projeto nativo (prebuild)
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Compilar (Release, sem assinatura)
+        run: |
+          set -o pipefail
+          WORKSPACE=$(ls -d ios/*.xcworkspace | head -1)
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          echo "Workspace: $WORKSPACE / Scheme: $SCHEME"
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            archive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            | tail -n 200
+
+      - name: Empacotar .ipa
+        run: |
+          mkdir -p out/Payload
+          cp -R "$RUNNER_TEMP/App.xcarchive/Products/Applications/"*.app out/Payload/
+          cd out && zip -qry Gravacoes.ipa Payload
+          ls -lh Gravacoes.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Gravacoes-ipa
+          path: out/Gravacoes.ipa
+          retention-days: 14

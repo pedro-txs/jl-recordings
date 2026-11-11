@@ -15,6 +15,9 @@ export function configureGoogle() {
   });
 }
 
+/** Já existe uma conta Google conectada neste iPhone? (não usa internet) */
+export const hasGoogleSession = () => GoogleSignin.hasPreviousSignIn();
+
 export async function restoreSession(): Promise<User | null> {
   if (!GoogleSignin.hasPreviousSignIn()) return null;
   const res = await GoogleSignin.signInSilently();

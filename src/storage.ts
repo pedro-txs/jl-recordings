@@ -14,6 +14,7 @@ export type Settings = {
 export type RecStatus =
   | 'recording' // gravando agora
   | 'pending' // na fila para enviar
+  | 'local' // guardado no iPhone, esperando conectar o Drive / escolher a pasta
   | 'uploading' // enviando o áudio
   | 'transcribing' // transcrevendo
   | 'done' // tudo certo

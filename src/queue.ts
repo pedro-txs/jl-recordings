@@ -1,5 +1,5 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import { findFileId, uniqueName, uploadAudio, uploadTranscriptDoc } from './drive';
+import { findFileId, hasGoogleSession, uniqueName, uploadAudio, uploadTranscriptDoc } from './drive';
 import { recordingsStore } from './recordingsStore';
 import { getOpenAIKey, loadSettings, type Recording } from './storage';
 import { MAX_BYTES, transcribe } from './transcribe';
@@ -25,7 +25,7 @@ export async function processQueue(): Promise<void> {
       again = false;
       const pending = recordingsStore
         .get()
-        .filter((r) => r.status === 'pending')
+        .filter((r) => r.status === 'pending' || r.status === 'local')
         .reverse(); // mais antigos primeiro
       for (const r of pending) {
         await processOne(r.id);
@@ -49,8 +49,10 @@ async function processOne(id: string) {
   const r = recordingsStore.find(id);
   if (!r) return;
 
-  if (!settings.folder) {
-    recordingsStore.update(id, { status: 'error', error: 'Escolha a pasta do Drive nas configurações.' });
+  // Sem conta conectada ou sem pasta: o áudio fica guardado no iPhone (não é erro).
+  // Vai sozinho para o Drive assim que conectar e escolher a pasta.
+  if (!hasGoogleSession() || !settings.folder) {
+    if (r.status !== 'local') recordingsStore.update(id, { status: 'local', error: undefined });
     return;
   }
   const folderId = settings.folder.id;

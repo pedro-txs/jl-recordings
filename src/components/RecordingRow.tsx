@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useState } from 'react';
-import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { driveDocLink, driveFileLink } from '../drive';
 import { formatDuration, formatTime } from '../naming';
 import { NO_KEY_NOTE, retry } from '../queue';
@@ -11,6 +11,7 @@ import { colors, radius } from '../theme';
 
 const STATUS: Record<RecStatus, { label: string; fg: string; bg: string; icon: keyof typeof Ionicons.glyphMap }> = {
   recording: { label: 'Gravando', fg: colors.record, bg: colors.recordSoft, icon: 'radio-button-on' },
+  local: { label: 'No iPhone', fg: colors.inkSoft, bg: colors.line, icon: 'phone-portrait-outline' },
   pending: { label: 'Na fila', fg: colors.warn, bg: colors.warnSoft, icon: 'time-outline' },
   uploading: { label: 'Enviando', fg: colors.warn, bg: colors.warnSoft, icon: 'cloud-upload-outline' },
   transcribing: { label: 'Transcrevendo', fg: colors.warn, bg: colors.warnSoft, icon: 'document-text-outline' },
@@ -60,6 +61,9 @@ export function RecordingRow({ item }: { item: Recording }) {
           {item.transcriptNote ? ` · ${item.transcriptNote}` : item.transcriptDocId ? ' · Transcrito' : ''}
         </Text>
         {item.error ? <Text style={styles.error}>{item.error}</Text> : null}
+        {item.status === 'local' ? (
+          <Text style={styles.localHint}>Guardado no iPhone. Vai para o Drive quando você conectar e escolher a pasta.</Text>
+        ) : null}
 
         {open && (
           <View style={styles.details}>
@@ -71,6 +75,13 @@ export function RecordingRow({ item }: { item: Recording }) {
             <View style={styles.actions}>
               {item.driveFileId && (
                 <Action icon="musical-notes-outline" label="Áudio" onPress={() => Linking.openURL(driveFileLink(item.driveFileId!))} />
+              )}
+              {item.localUri && item.status !== 'recording' && (
+                <Action
+                  icon="share-outline"
+                  label="Compartilhar"
+                  onPress={() => void Share.share({ url: item.localUri! }).catch(() => {})}
+                />
               )}
               {item.transcriptDocId && (
                 <Action icon="document-text-outline" label="Transcrição" onPress={() => Linking.openURL(driveDocLink(item.transcriptDocId!))} />
@@ -126,6 +137,7 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 12, fontWeight: '600' },
   meta: { fontSize: 13, color: colors.muted, marginTop: 4, fontVariant: ['tabular-nums'] },
   error: { fontSize: 13, color: colors.danger, marginTop: 6 },
+  localHint: { fontSize: 13, color: colors.muted, marginTop: 6 },
   details: { marginTop: 12, gap: 12 },
   transcript: {
     fontSize: 15,
